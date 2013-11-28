@@ -145,8 +145,8 @@ int main(int argc, char** argv) {
 	iconPlay = SDL_LoadBMP( "images/play.bmp" );
 	keyS = SDL_LoadBMP( "images/S.bmp" );
 	digits = SDL_LoadBMP( "images/digits_green.bmp" );
-	if(keyEsc == NULL || keyQ == NULL || iconExit == NULL || keyP == NULL || iconPause == NULL || iconPlay == NULL/* || keyS == NULL ||
-			digits == NULL*/) {
+	if(keyEsc == NULL || keyQ == NULL || iconExit == NULL || keyP == NULL || iconPause == NULL || iconPlay == NULL || keyS == NULL ||
+			digits == NULL) {
 		printf("Loading images Error - exiting\n");
 		return 1;
 	}
