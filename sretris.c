@@ -3,7 +3,6 @@
  * version 0.1 - 17.11.2013 - playable tetris with following features:
  * pause; start again; block and background images rollback; side panel with nice control icons; scores with bonuses; speed levels;
  *
- * super partia ku..wo!
  *
  * TODO - highscores, options
  * TODO - visual WOWs
@@ -138,17 +137,17 @@ int main(int argc, char** argv) {
 	screen = SDL_SetVideoMode( screenWidth + sidePanelWidth, screenHeight, colorDepth, SDL_SWSURFACE );
 
 	/* Load control icons images */
-	keyEsc = (SDL_Surface*) SDL_LoadBMP( "images/Esc_mono.bmp" ); /*IMG_Load( "images/Esc_trans.png" );*/
-	keyQ = IMG_Load( "images/Q_trans.png" );
-	iconExit = IMG_Load( "images/exit.png" );
-	keyP = IMG_Load( "images/P_trans.png" );
-	iconPause = IMG_Load( "images/pause.png" );
-	iconPlay = IMG_Load( "images/play.png" );
-	keyS = IMG_Load( "images/S_trans.png" );
+	keyEsc = SDL_LoadBMP( "images/Esc.bmp" );
+	keyQ = SDL_LoadBMP( "images/Q.bmp" );
+	iconExit = SDL_LoadBMP( "images/exit.bmp" );
+	keyP = SDL_LoadBMP( "images/P.bmp" );
+	iconPause = SDL_LoadBMP( "images/pause.bmp" );
+	iconPlay = SDL_LoadBMP( "images/play.bmp" );
+	keyS = SDL_LoadBMP( "images/S.bmp" );
 	digits = SDL_LoadBMP( "images/digits_green.bmp" );
-	if(keyEsc == NULL || keyQ == NULL || iconExit == NULL || keyP == NULL || iconPause == NULL || iconPlay == NULL || keyS == NULL ||
-			digits == NULL) {
-		printf("Error while loading images\n");
+	if(keyEsc == NULL || keyQ == NULL || iconExit == NULL || keyP == NULL || iconPause == NULL || iconPlay == NULL/* || keyS == NULL ||
+			digits == NULL*/) {
+		printf("Loading images Error - exiting\n");
 		return 1;
 	}
 	
@@ -344,7 +343,7 @@ void initNewGame( void ) {
 	}
 	
 	SDL_Rect rect = { screenWidth, 0, sidePanelWidth, screenHeight };
-	SDL_FillRect( screen, &rect, 0x111111 ); /* side panel background */
+	SDL_FillRect( screen, &rect, 0x101010 ); /* side panel background */
 
 	rect.x += 4;
 	rect.y += screenHeight - 40;
