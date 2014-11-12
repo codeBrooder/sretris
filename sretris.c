@@ -11,8 +11,8 @@
  * 
  */
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_events.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
 
 typedef enum { running, stopped, paused, gameOver } gameState;
 gameState state; 
@@ -31,6 +31,7 @@ void blitScore ( void );
 void blitSpeedLevel( void );
 inline void printState( void );
 inline bool blockInPlane( void );
+void clean( void );
 
 #define WIDTH 12
 #define HEIGHT 16
@@ -39,24 +40,37 @@ const int height = HEIGHT;
 int empty[WIDTH][HEIGHT]; /* array representing currnet state of tiles - empty or with block */
 
 const int blockPixelSize = 40;
+const int iconPixelSize = 32;
 
 int screenWidth;
 int screenHeight;
 const int colorDepth = 32;
 const int sidePanelWidth = 150;
 
-SDL_Surface* screen = NULL;
-SDL_Surface* background = NULL;
-SDL_Surface* block = NULL;
+SDL_Renderer* sdlRenderer = NULL;
+SDL_Window* screen = NULL;
 
-SDL_Surface* digits = NULL;
-SDL_Surface* keyEsc = NULL;
-SDL_Surface* keyQ = NULL;
-SDL_Surface* iconExit = NULL;
-SDL_Surface* keyP = NULL;
-SDL_Surface* iconPause = NULL;
-SDL_Surface* iconPlay = NULL;
-SDL_Surface* keyS = NULL;
+SDL_Surface* background_s = NULL;
+SDL_Texture* background = NULL;
+SDL_Surface* block_s  = NULL;
+SDL_Texture* block = NULL;
+
+SDL_Surface* digits_s  = NULL;
+SDL_Texture* digits = NULL;
+SDL_Surface* keyEsc_s  = NULL;
+SDL_Texture* keyEsc = NULL;
+SDL_Surface* keyQ_s  = NULL;
+SDL_Texture* keyQ = NULL;
+SDL_Surface* iconExit_s  = NULL;
+SDL_Texture* iconExit = NULL;
+SDL_Surface* keyP_s  = NULL;
+SDL_Texture* keyP = NULL;
+SDL_Surface* iconPause_s  = NULL;
+SDL_Texture* iconPause = NULL;
+SDL_Surface* iconPlay_s  = NULL;
+SDL_Texture* iconPlay = NULL;
+SDL_Surface* keyS_s  = NULL;
+SDL_Texture* keyS = NULL;
 
 struct Pozition {
 	int x,y;
@@ -134,17 +148,43 @@ int main(int argc, char** argv) {
 	screenHeight = height * blockPixelSize;
 
 	SDL_Init( SDL_INIT_VIDEO );
-	screen = SDL_SetVideoMode( screenWidth + sidePanelWidth, screenHeight, colorDepth, SDL_SWSURFACE );
-
+	if( SDL_CreateWindowAndRenderer(
+		   screenWidth + sidePanelWidth, screenHeight,
+		   SDL_WINDOW_SHOWN, &screen, &sdlRenderer)
+	  )	{
+			printf("Window or renderer creation failed - exiting.");
+			return 1;
+		}
+		
 	/* Load control icons images */
-	keyEsc = SDL_LoadBMP( "images/Esc.bmp" );
-	keyQ = SDL_LoadBMP( "images/Q.bmp" );
-	iconExit = SDL_LoadBMP( "images/exit.bmp" );
-	keyP = SDL_LoadBMP( "images/P.bmp" );
-	iconPause = SDL_LoadBMP( "images/pause.bmp" );
-	iconPlay = SDL_LoadBMP( "images/play.bmp" );
-	keyS = SDL_LoadBMP( "images/S.bmp" );
-	digits = SDL_LoadBMP( "images/digits_green.bmp" );
+	keyEsc_s = SDL_LoadBMP( "images/Esc.bmp" );
+	printf("keyEsc_s = %p \n", keyEsc_s );
+	if(keyEsc_s == NULL) {
+		printf( SDL_GetError() );
+		printf( "\n" );
+	}
+	keyQ_s = SDL_LoadBMP( "images/Q.bmp" );
+	printf("keyQ_s = %p \n", keyQ_s );
+	if(keyQ_s == NULL) {
+		printf( SDL_GetError() );
+		printf( "\n" );
+	}
+	iconExit_s = SDL_LoadBMP( "images/exit.bmp" );
+	keyP_s = SDL_LoadBMP( "images/P.bmp" );
+	iconPause_s = SDL_LoadBMP( "images/pause.bmp" );
+	iconPlay_s = SDL_LoadBMP( "images/play.bmp" );
+	keyS_s = SDL_LoadBMP( "images/S.bmp" );
+	digits_s = SDL_LoadBMP( "images/digits_green.bmp" );
+
+	keyEsc = SDL_CreateTextureFromSurface( sdlRenderer, keyEsc_s );
+	keyQ = SDL_CreateTextureFromSurface( sdlRenderer, keyQ_s );
+	iconExit = SDL_CreateTextureFromSurface( sdlRenderer, iconExit_s );
+	keyP = SDL_CreateTextureFromSurface( sdlRenderer, keyP_s );
+	iconPause = SDL_CreateTextureFromSurface( sdlRenderer, iconPause_s );
+	iconPlay = SDL_CreateTextureFromSurface( sdlRenderer, iconPlay_s );
+	keyS = SDL_CreateTextureFromSurface( sdlRenderer, keyS_s );
+	digits = SDL_CreateTextureFromSurface( sdlRenderer, digits_s );
+	
 	if(keyEsc == NULL || keyQ == NULL || iconExit == NULL || keyP == NULL || iconPause == NULL || iconPlay == NULL || keyS == NULL ||
 			digits == NULL) {
 		printf("Loading images Error - exiting\n");
@@ -153,20 +193,37 @@ int main(int argc, char** argv) {
 	
 	/* load background and block images
 	 * if loading fails there are default colors defined */
-	if(	( background = SDL_LoadBMP( "images/vinales-valley.bmp" ) ) == NULL ) {
-		background = SDL_CreateRGBSurface( SDL_SWSURFACE, screenWidth, screenHeight, colorDepth,0,0,0,0 );
-		SDL_FillRect( background, NULL , 0x222222 );
+	if(	( background_s = SDL_LoadBMP( "images/vinales-valley.bmp" ) ) == NULL ) {
+		background_s = SDL_CreateRGBSurface( SDL_SWSURFACE, screenWidth, screenHeight, colorDepth,0,0,0,0 );
+		SDL_FillRect( background_s, NULL , 0x222222 );
 	}
-	if( ( block = SDL_LoadBMP( "images/kloc40x40.bmp" ) ) == NULL ) {
-		block = SDL_CreateRGBSurface( SDL_SWSURFACE, blockPixelSize, blockPixelSize, colorDepth, 0,0,0,0 );
-		SDL_FillRect( block, NULL , 0x000000 );
+	background = SDL_CreateTextureFromSurface( sdlRenderer, background_s );
+	if( ( block_s = SDL_LoadBMP( "images/kloc40x40.bmp" ) ) == NULL ) {
+		block_s = SDL_CreateRGBSurface( SDL_SWSURFACE, blockPixelSize, blockPixelSize, colorDepth, 0,0,0,0 );
+		SDL_FillRect( block_s, NULL , 0x000000 );
 		SDL_Rect rect =  { 1,1, blockPixelSize-1, blockPixelSize-1 };
-		SDL_FillRect( block, &rect, 0x30ff90 );
+		SDL_FillRect( block_s, &rect, 0x30ff90 );
 	}
+	block = SDL_CreateTextureFromSurface( sdlRenderer, block_s );
+
+	/* free all surfaces - now Textures will be used instead */
+	SDL_FreeSurface( keyEsc_s );
+	SDL_FreeSurface( keyQ_s );
+	SDL_FreeSurface( iconExit_s );
+	SDL_FreeSurface( keyP_s );
+	SDL_FreeSurface( iconPause_s );
+	SDL_FreeSurface( iconPlay_s );
+	SDL_FreeSurface( keyS_s );
+	SDL_FreeSurface( digits_s );
+
+	SDL_FreeSurface( background_s );
+	SDL_FreeSurface( block_s );
+
 	srand ( (unsigned) time(NULL) ); /* randomize rand seed */
 
 	SDL_Event event;
-	SDL_EnableKeyRepeat(1, 150);
+	/* No SDL_EnableKeyRepeat in SDL2. Leaving commented yet. */
+	/* SDL_EnableKeyRepeat(1, 150); */
 
 	initNewGame();
 
@@ -235,7 +292,7 @@ int main(int argc, char** argv) {
 									if( block4.poz[i].y >= 0 ) {
 										tempRect.x = block4.poz[i].x * blockPixelSize;
 										tempRect.y = block4.poz[i].y * blockPixelSize;
-										SDL_BlitSurface( background, &tempRect, screen, &tempRect );
+										SDL_RenderCopy( sdlRenderer, background, &tempRect, &tempRect );
 									}
 									block4.poz[i].x += deltaPoz[i].x;
 									block4.poz[i].y += deltaPoz[i].y;
@@ -244,11 +301,11 @@ int main(int argc, char** argv) {
 									if( block4.poz[i].y >= 0 ) {
 										tempRect.x = block4.poz[i].x * blockPixelSize;
 										tempRect.y = block4.poz[i].y * blockPixelSize;
-										SDL_BlitSurface( block, NULL, screen, &tempRect );
+										SDL_RenderCopy( sdlRenderer, block, NULL, &tempRect );
 									}
 								blockVar = block4.next;
 								block4.next = blocks[block4.next].next;
-								SDL_Flip( screen );
+								SDL_RenderPresent( sdlRenderer );
 								/*printState();*/
 							}
 							}
@@ -305,9 +362,7 @@ int main(int argc, char** argv) {
 	}/*while running*/
 
 	/* clean before you go out the toilet */
-	SDL_FreeSurface( background );
-	SDL_FreeSurface( screen );
-	SDL_FreeSurface( block );
+	clean();
 
 	SDL_Quit();
 
@@ -333,39 +388,41 @@ void initNewGame( void ) {
 	blockVar = rand() % BLOCK_VARIANTS;
 	block4 = blocks[ blockVar ];
 	
-	SDL_BlitSurface( background, NULL, screen, NULL);
+	SDL_RenderCopy( sdlRenderer, background, NULL, NULL );
 	SDL_Rect tempRect;
 	tempRect.w = tempRect.h = blockPixelSize;
 	for(c=0; c<4; c++) {
 		tempRect.x = block4.poz[c].x * blockPixelSize;
 		tempRect.y = block4.poz[c].y * blockPixelSize;
-		SDL_BlitSurface( block , NULL, screen, &tempRect );
+		SDL_RenderCopy( sdlRenderer, block, NULL, &tempRect );
 	}
 	
 	SDL_Rect rect = { screenWidth, 0, sidePanelWidth, screenHeight };
-	SDL_FillRect( screen, &rect, 0x101010 ); /* side panel background */
+	SDL_SetRenderDrawColor( sdlRenderer, 0x10, 0x10, 0x10, 0xFF );
+	SDL_RenderFillRect( sdlRenderer , &rect ); /* side panel background */
 
+	rect.w = rect.h = iconPixelSize;
 	rect.x += 4;
 	rect.y += screenHeight - 40;
-	SDL_BlitSurface( keyEsc, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, keyEsc, NULL, &rect );
 
 	rect.x += 36;
-	SDL_BlitSurface( keyQ, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, keyQ, NULL, &rect );
 
 	rect.x += 40;
-	SDL_BlitSurface( iconExit, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, iconExit, NULL, &rect );
 
 	rect.x -= 76;
 	rect.y -= 40;
-	SDL_BlitSurface( keyP, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, keyP, NULL, &rect );
 
 	rect.x += 40;
-	SDL_BlitSurface( iconPause, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, iconPause, NULL, &rect );
 
 	blitScore();
 	blitSpeedLevel();
 
-	SDL_Flip( screen );
+	SDL_RenderPresent( sdlRenderer );
 
 	state = running;
 }
@@ -382,7 +439,7 @@ void updateScreen( const blockMoveDirection move ) {
 			rect.y = ( block4.poz[i].y - 1 ) * blockPixelSize;
 			if( rect.y >= 0 ) {
 				rect.x = block4.poz[i].x * blockPixelSize;
-				SDL_BlitSurface( background, &rect, screen, &rect );
+				SDL_RenderCopy( sdlRenderer, background, &rect, &rect );
 			}
 		}
 	}
@@ -391,7 +448,7 @@ void updateScreen( const blockMoveDirection move ) {
 			rect.y = block4.poz[i].y * blockPixelSize;
 			if( rect.y >= 0 ) {
 				rect.x = ( block4.poz[i].x + 1 ) * blockPixelSize;
-				SDL_BlitSurface( background, &rect, screen, &rect );
+				SDL_RenderCopy( sdlRenderer, background, &rect, &rect );
 			}
 		}
 	}
@@ -400,7 +457,7 @@ void updateScreen( const blockMoveDirection move ) {
 			rect.y = block4.poz[i].y * blockPixelSize;
 			if( rect.y >= 0 ) {
 				rect.x = ( block4.poz[i].x - 1 ) * blockPixelSize;
-				SDL_BlitSurface( background, &rect, screen, &rect );
+				SDL_RenderCopy( sdlRenderer, background, &rect, &rect );
 			}
 		}
 	}
@@ -409,12 +466,11 @@ void updateScreen( const blockMoveDirection move ) {
 		rect.y = block4.poz[i].y * blockPixelSize;
 		if( rect.y >= 0 ) {
 			rect.x = block4.poz[i].x * blockPixelSize;
-			SDL_BlitSurface( block, NULL, screen, &rect );
-			SDL_UpdateRect( screen, rect.x, rect.y, rect.w, rect.h );
+			SDL_RenderCopy( sdlRenderer, block, NULL, &rect );
 		}
 	}
 
-	SDL_Flip( screen );
+	SDL_RenderPresent( sdlRenderer );
 }
 
 /* function called when pause or game over occured */
@@ -426,13 +482,12 @@ void gameStopped( void ) {
 	 */
 	printf("gameStopped score=%d\n", score);
 
-	SDL_Surface* stopInfo = NULL;
 	if( state == paused )
 		blitPause();
 	else
 		blitGameOver();
 
-	SDL_Flip(screen);
+	SDL_RenderPresent( sdlRenderer );
 	SDL_Event event;
 
 	bool runWhile = true;
@@ -464,31 +519,30 @@ void gameStopped( void ) {
 				rect.x = i*blockPixelSize;
 				rect.y = j*blockPixelSize;
 				if( empty[i][j] )
-					SDL_BlitSurface( background, &rect, screen, &rect );
+					SDL_RenderCopy( sdlRenderer, background, &rect, &rect );
 				else
-					SDL_BlitSurface( block, NULL, screen, &rect );
+					SDL_RenderCopy( sdlRenderer, block, NULL, &rect );
 			}
 		for(i=0; i<4; i++)
 			if( block4.poz[i].y >=0 ) {
 				rect.x = block4.poz[i].x * blockPixelSize;
 				rect.y = block4.poz[i].y * blockPixelSize;
-				SDL_BlitSurface( block, NULL, screen, &rect );
+				SDL_RenderCopy( sdlRenderer, block, NULL, &rect );
 			}
 
 		/* draw pause icon instead of play icon in side panel */
+		rect.w = rect.h = iconPixelSize;
 		rect.x = screenWidth + 44;
 		rect.y = screenHeight - 80;
-		SDL_BlitSurface( iconPause, NULL, screen, &rect );
+		SDL_RenderCopy( sdlRenderer, iconPause, NULL, &rect );
 
-		SDL_Flip( screen );
+		SDL_RenderPresent( sdlRenderer );
 		state = running;
 	}
 	else if( state == gameOver && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_s )
 		initNewGame();
 	else
 		state = stopped; /* if user decided to quit, instruct main loop to quit the game */
-	
-	SDL_FreeSurface( stopInfo );
 }
 
 void blitScore ( void ) {
@@ -504,7 +558,7 @@ void blitScore ( void ) {
 	for( i=numDigits-1; i>=0; i--) {
 		rect.x = ( ( (int) scoreStr[i] ) - 48 ) * 20;
 		rectDst.x = screenWidth + sidePanelWidth - (numDigits - i)*20;
-		SDL_BlitSurface( digits, &rect, screen, &rectDst );
+		SDL_RenderCopy( sdlRenderer, digits, &rect, &rectDst );
 	}
 }
 
@@ -522,7 +576,7 @@ void blitSpeedLevel( void ) {
 	for( i=0; i<numDigits; i++ ) {
 		rect.x = ( ( (int) speedLevelStr[i] ) - 48 ) * 20;
 		rectDst.x = screenWidth + (numDigits + i)*20 + 1;
-		SDL_BlitSurface( digits, &rect, screen, &rectDst );
+		SDL_RenderCopy( sdlRenderer, digits, &rect, &rectDst );
 	}
 
 }
@@ -532,34 +586,39 @@ void blitGameOver( void ) {
 	SDL_Rect rect = {screenWidth/2 - blockPixelSize*2.5 + blockPixelSize/4,
 		screenHeight/2 - blockPixelSize*3 + blockPixelSize/4,
 		blockPixelSize*5, blockPixelSize*5};
-	SDL_FillRect( screen, &rect, 0x101010 );
+	SDL_SetRenderDrawColor( sdlRenderer, 0x10, 0x10, 0x10, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.x -= blockPixelSize/4;
 	rect.y -= blockPixelSize/4;
-	SDL_FillRect( screen, &rect, 0x000088 );
+	SDL_SetRenderDrawColor( sdlRenderer, 0x00, 0x00, 0x88, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.x += 2;
 	rect.y += 2;
 	rect.w -= 4;
 	rect.h -= 4;
-	SDL_FillRect( screen, &rect, 0x99AAAA );
+	SDL_SetRenderDrawColor( sdlRenderer, 0x99, 0xAA, 0xAA, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.x = screenWidth/2 - blockPixelSize*0.5;
 	rect.y = screenHeight/2 - blockPixelSize*2.5;
 	rect.w = blockPixelSize;
 	rect.h = blockPixelSize*2.5;
-	SDL_FillRect( screen, &rect, 0xAA0000 );
+	SDL_SetRenderDrawColor( sdlRenderer, 0xAA, 0x00, 0x00, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.y += blockPixelSize*3;
 	rect.h = blockPixelSize;
-	SDL_FillRect( screen, &rect, 0xAA0000 );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	/* draw "start new game" control instead of pause control */
+	rect.w = rect.h = iconPixelSize;
 	rect.y = screenHeight - 80;
 	rect.x = screenWidth + 4;
-	SDL_BlitSurface( keyS, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, keyS, NULL, &rect );
 	rect.x += 40;
-	SDL_BlitSurface( iconPlay, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, iconPlay, NULL, &rect );
 
 }
 
@@ -568,32 +627,37 @@ void blitPause( void ) {
 	SDL_Rect rect = {screenWidth/2 - blockPixelSize*2.5 + blockPixelSize/4,
 		screenHeight/2 - blockPixelSize*3 + blockPixelSize/4,
 		blockPixelSize*5, blockPixelSize*5};
-	SDL_FillRect( screen, &rect, 0x101010 );
+	SDL_SetRenderDrawColor( sdlRenderer, 0x10, 0x10, 0x10, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.x -= blockPixelSize/4;
 	rect.y -= blockPixelSize/4;
-	SDL_FillRect( screen, &rect, 0x000088 );
+	SDL_SetRenderDrawColor( sdlRenderer, 0x00, 0x00, 0x88, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.x += 2;
 	rect.y += 2;
 	rect.w -= 4;
 	rect.h -= 4;
-	SDL_FillRect( screen, &rect, 0xAAAAAA );
+	SDL_SetRenderDrawColor( sdlRenderer, 0xAA, 0xAA, 0xAA, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.x = screenWidth/2 - blockPixelSize*1.5;
 	rect.y = screenHeight/2 - blockPixelSize*2;
 	rect.w = blockPixelSize;
 	rect.h = blockPixelSize*3;
 
-	SDL_FillRect( screen, &rect, 0x000088 );
+	SDL_SetRenderDrawColor( sdlRenderer, 0x00, 0x00, 0x88, 0xFF );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	rect.x = screenWidth/2 + blockPixelSize/2;
-	SDL_FillRect(screen, &rect, 0x000088 );
+	SDL_RenderFillRect( sdlRenderer, &rect );
 
 	/* draw play icon instead of pause icon in controls panel */
+	rect.w = rect.h = iconPixelSize;
 	rect.x = screenWidth + 44;
 	rect.y = screenHeight - 80;
-	SDL_BlitSurface( iconPlay, NULL, screen, &rect );
+	SDL_RenderCopy( sdlRenderer, iconPlay, NULL, &rect );
 
 }
 
@@ -640,9 +704,9 @@ void checkLine( void ) {
 					rect.x = i*blockPixelSize;
 					rect.y = j*blockPixelSize;
 					if( empty[i][j] )
-						SDL_BlitSurface( background, &rect, screen, &rect );
+						SDL_RenderCopy( sdlRenderer, background, &rect, &rect );
 					else
-						SDL_BlitSurface( block, NULL, screen, &rect );
+						SDL_RenderCopy( sdlRenderer, block, NULL, &rect );
 				}
 
 		score += fullRows*fullRows*10*(lastSuccesses+1); /* lastSuccesses: full line one after another block bonus */
@@ -659,7 +723,7 @@ void checkLine( void ) {
 				blitSpeedLevel();
 			}
 		}
-		SDL_Flip( screen);
+		SDL_RenderPresent( sdlRenderer );
 	}
 	else
 		lastSuccesses = 0;
@@ -709,6 +773,27 @@ inline bool blockInPlane( void ) {
 		if(block4.poz[i].y < 1)
 			temp++;
 	return !temp;
+}
+
+void clean( void ) {
+	SDL_DestroyTexture( keyS );
+	SDL_DestroyTexture( keyQ );
+	SDL_DestroyTexture( keyP );
+	SDL_DestroyTexture( keyEsc );
+	SDL_DestroyTexture( iconPause );
+	SDL_DestroyTexture( iconPlay );
+	SDL_DestroyTexture( iconExit );
+	SDL_DestroyTexture( digits );
+
+	SDL_DestroyTexture( block );
+	SDL_DestroyTexture( background );
+
+	keyS = keyQ = keyP = keyEsc = iconPause = iconPlay = iconExit = digits = block = background = NULL;
+
+	SDL_DestroyRenderer( sdlRenderer );
+	SDL_DestroyWindow( screen );
+	sdlRenderer = NULL;
+	screen = NULL;
 }
 
 /* prints to console state of the game in nice format
